@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "Ưu đãi đặc biệt cho sản phẩm số và key bản quyền.",
 };
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function DealsPage() {
   const [productsRes, categoriesRes] = await Promise.allSettled([

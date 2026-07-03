@@ -262,25 +262,25 @@ export function getPurchaseVariants(
 
   return [
     {
+      id: "daily",
+      name: "Key ngay",
+      price: Math.max(0, Math.round(baseSalePrice / 30)),
+      listPrice: null,
+      duration: "daily",
+    },
+    {
       id: "monthly",
-      name: "Key tháng",
+      name: "Key thang",
       price: baseSalePrice,
       listPrice: baseListPrice,
       duration: "monthly",
     },
     {
       id: "yearly",
-      name: "Key năm",
+      name: "Key nam",
       price: Math.round(baseSalePrice * 10),
       listPrice: null,
       duration: "yearly",
-    },
-    {
-      id: "lifetime",
-      name: "Key vĩnh viễn",
-      price: Math.round(baseSalePrice * 24),
-      listPrice: null,
-      duration: "lifetime",
     },
   ];
 }

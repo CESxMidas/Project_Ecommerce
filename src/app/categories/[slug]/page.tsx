@@ -7,7 +7,7 @@ import { ProductListingSkeleton } from "@/components/ui/skeleton";
 import { getCategories, getProducts } from "@/lib/api/server";
 import { pageMetadata } from "@/lib/metadata";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 type Props = {
   params: { slug: string };

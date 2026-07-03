@@ -242,13 +242,16 @@ export async function getProducts(params?: Record<string, string>) {
 
   const data = await serverFetch<unknown>(
     `${API_ENDPOINTS.products.list}${query}`,
+    { revalidate: false },
   );
 
   return normalizeProductsPayload(data);
 }
 
 export async function getProductById(id: string) {
-  const data = await serverFetch<unknown>(API_ENDPOINTS.products.detail(id));
+  const data = await serverFetch<unknown>(API_ENDPOINTS.products.detail(id), {
+    revalidate: false,
+  });
   const raw = asRecord(data);
 
   if (!raw) {
