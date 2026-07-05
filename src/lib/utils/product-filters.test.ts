@@ -6,6 +6,7 @@ import {
   paginateProducts,
   sortProducts,
 } from "@/lib/utils/product-filters";
+import { getSalePrice } from "@/lib/utils/product-schema";
 import { mockProductsForFilter } from "@/test/fixtures/commerce";
 
 describe("product-filters", () => {
@@ -22,7 +23,7 @@ describe("product-filters", () => {
 
   it("sorts products by price ascending", () => {
     const sorted = sortProducts(mockProductsForFilter, "price-asc");
-    expect(sorted[0].salePrice).toBeLessThanOrEqual(sorted[1].salePrice);
+    expect(getSalePrice(sorted[0])).toBeLessThanOrEqual(getSalePrice(sorted[1]));
   });
 
   it("paginates product list", () => {

@@ -53,8 +53,10 @@ function getSessionUser(session: ReturnType<typeof useSession>["data"]) {
 
 export function WishlistCompareProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
-  const sessionUser = getSessionUser(session);
-  const sessionUserId = sessionUser?._id ?? sessionUser?.email ?? null;
+  const sessionUser = useMemo(
+    () => getSessionUser(session),
+    [session],
+  );
 
   const [wishlist, setWishlist] = useState<NormalizedProduct[]>(() =>
     typeof window !== "undefined" ? loadWishlist() : [],
@@ -68,7 +70,7 @@ export function WishlistCompareProvider({ children }: { children: React.ReactNod
     setWishlist(loadWishlist(sessionUser));
     setCompareItems(loadCompare());
     setHydrated(true);
-  }, [sessionUserId, sessionUser?.email]);
+  }, [sessionUser]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -107,7 +109,7 @@ export function WishlistCompareProvider({ children }: { children: React.ReactNod
     };
 
     syncServerWishlist();
-  }, [status, sessionUserId]);
+  }, [status, sessionUser]);
 
   const toggleWishlist = useCallback(
     async (product: NormalizedProduct | Record<string, unknown>) => {

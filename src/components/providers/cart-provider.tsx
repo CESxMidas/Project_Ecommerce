@@ -112,8 +112,10 @@ function getSessionUser(session: ReturnType<typeof useSession>["data"]) {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
-  const sessionUser = getSessionUser(session);
-  const sessionUserId = sessionUser?._id ?? sessionUser?.email ?? null;
+  const sessionUser = useMemo(
+    () => getSessionUser(session),
+    [session],
+  );
   const isAuthenticated = status === "authenticated";
 
   const [cartItems, setCartItems] = useState<CartItem[]>(() =>
@@ -125,7 +127,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setCartItems(loadCart(sessionUser));
     setHydrated(true);
-  }, [sessionUserId, sessionUser?.email]);
+  }, [sessionUser]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -155,7 +157,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
 
     syncServerCart();
-  }, [status, sessionUserId]);
+  }, [status, sessionUser]);
 
   useEffect(() => {
     const clearCompletedCheckoutCart = () => {
