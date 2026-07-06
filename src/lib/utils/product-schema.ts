@@ -1,3 +1,4 @@
+import { resolveMediaUrl } from "@/lib/utils/image";
 import type { NormalizedProduct, PurchaseVariant } from "@/types/cart";
 
 type ProductPricing = {
@@ -83,13 +84,16 @@ export function normalizeProduct(raw: Record<string, unknown> | null) {
 
   const salePrice = getSalePrice(raw as unknown as NormalizedProduct);
   const listPrice = getListPrice(raw as unknown as NormalizedProduct);
-  const thumbnail =
+  const rawThumbnail =
     (raw.thumbnail as string) ||
     (raw.image as string) ||
     ((raw.images as string[])?.[0] ?? "");
+  const thumbnail = resolveMediaUrl(rawThumbnail, "");
   const images =
     Array.isArray(raw.images) && raw.images.length > 0
       ? (raw.images as string[])
+          .map((image) => resolveMediaUrl(image, thumbnail))
+          .filter(Boolean)
       : thumbnail
         ? [thumbnail]
         : [];
