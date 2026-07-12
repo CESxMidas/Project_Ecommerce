@@ -4,6 +4,7 @@ import type { AppliedCoupon, CartItem, CartSummary } from "@/types/cart";
 const LEGACY_CART_KEY = "cart";
 const GUEST_CART_KEY = "cart:guest";
 const COMPLETED_CHECKOUT_KEY = "completedCheckoutAt";
+const APPLIED_COUPON_KEY = "appliedCoupon";
 
 export function getUserCartKey(user: { _id?: string; id?: string; email?: string } | null = null) {
   const userId = user?._id || user?.id || user?.email;
@@ -116,4 +117,46 @@ export function getPayableCartTotal(
   }
 
   return summary.total;
+}
+
+// --- Applied coupon persistence -------------------------------------------
+// The coupon a shopper applied on the cart page must survive navigation to
+// checkout, so it lives in localStorage. Centralised here (single key, safe
+// parse) so the cart page, checkout page, and cart provider stay in sync.
+
+export function loadAppliedCoupon(): AppliedCoupon | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    return JSON.parse(
+      localStorage.getItem(APPLIED_COUPON_KEY) || "null",
+    ) as AppliedCoupon | null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveAppliedCoupon(coupon: AppliedCoupon) {
+  if (typeof window === "undefined") return;
+
+  localStorage.setItem(APPLIED_COUPON_KEY, JSON.stringify(coupon));
+}
+
+export function clearAppliedCoupon() {
+  if (typeof window === "undefined") return;
+
+  localStorage.removeItem(APPLIED_COUPON_KEY);
+}
+
+// A stored coupon only applies while the cart subtotal it was validated against
+// still matches (items may have changed since it was applied).
+export function isAppliedCouponValid(
+  coupon: AppliedCoupon | null | undefined,
+  subtotal: number,
+): boolean {
+  return (
+    Boolean(coupon) &&
+    subtotal > 0 &&
+    Number(coupon?.subtotal) === Number(subtotal)
+  );
 }

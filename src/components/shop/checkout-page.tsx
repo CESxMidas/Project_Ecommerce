@@ -11,7 +11,12 @@ import { TrustSignals } from "@/components/commerce/trust-signals";
 import { OrderSummaryTotals } from "@/components/shop/order-summary-totals";
 import { placeOrder } from "@/lib/services/order-service";
 import { fetchAddresses } from "@/lib/services/user-service";
-import { getPayableCartTotal } from "@/lib/utils/cart-storage";
+import {
+  clearAppliedCoupon,
+  getPayableCartTotal,
+  isAppliedCouponValid,
+  loadAppliedCoupon,
+} from "@/lib/utils/cart-storage";
 import { checkoutCtaClass, fieldClass, labelClass } from "@/lib/ui/tokens";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/utils/format";
@@ -47,6 +52,27 @@ const emptyForm: CheckoutForm = {
   address: "",
 };
 
+// Prefill the checkout form from the signed-in user's name/email, and from a
+// saved address when one is available. Phone is intentionally left blank on the
+// initial load (the shopper confirms it, or applySavedAddress fills it in).
+function buildInitialCheckoutForm(
+  user: { name?: string | null; email?: string | null },
+  address?: UserAddress | null,
+): CheckoutForm {
+  const nameParts = (user.name || "").trim().split(" ");
+
+  return {
+    firstName: nameParts[0] || "",
+    lastName: nameParts.slice(1).join(" ") || "",
+    email: user.email || "",
+    phone: "",
+    country: address?.country || "",
+    city: address?.city || "",
+    pincode: address?.pincode || "",
+    address: address?.address_line || "",
+  };
+}
+
 export default function CheckoutPageClient() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -70,87 +96,45 @@ export default function CheckoutPageClient() {
   const [savedAddresses, setSavedAddresses] = useState<UserAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [formFields, setFormFields] = useState<CheckoutForm>(emptyForm);
-  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(() => {
-    if (typeof window === "undefined") return null;
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(
+    loadAppliedCoupon,
+  );
 
-    try {
-      return JSON.parse(localStorage.getItem("appliedCoupon") || "null");
-    } catch {
-      return null;
-    }
-  });
-
-  const hasValidCoupon =
-    appliedCoupon &&
-    cartSummary.subtotal > 0 &&
-    Number(appliedCoupon.subtotal) === Number(cartSummary.subtotal);
+  const hasValidCoupon = isAppliedCouponValid(appliedCoupon, cartSummary.subtotal);
   const effectiveCoupon = hasValidCoupon ? appliedCoupon : null;
   const displayTotal = getPayableCartTotal(cartSummary, effectiveCoupon);
 
   useEffect(() => {
     if (appliedCoupon && !hasValidCoupon) {
-      localStorage.removeItem("appliedCoupon");
+      clearAppliedCoupon();
       setAppliedCoupon(null);
     }
   }, [appliedCoupon, hasValidCoupon]);
 
   useEffect(() => {
-    if (!session?.user) return;
-
-    const nameParts = (session.user.name || "").trim().split(" ");
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ") || "";
+    const user = session?.user;
+    if (!user) return;
 
     const loadDefaultAddress = async () => {
       try {
         const data = await fetchAddresses();
-        let addresses: UserAddress[] = [];
-
-        if (Array.isArray(data)) {
-          addresses = data;
-        } else if (Array.isArray(data?.addresses)) {
-          addresses = data.addresses;
-        }
+        const addresses: UserAddress[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.addresses)
+            ? data.addresses
+            : [];
 
         if (addresses.length > 0) {
           setSavedAddresses(addresses);
           const defaultAddr =
             addresses.find((address) => address.isDefault) || addresses[0];
           setSelectedAddressId(defaultAddr.id || defaultAddr._id || "");
-
-          setFormFields({
-            firstName,
-            lastName,
-            email: session.user.email || "",
-            phone: "",
-            country: defaultAddr.country || "",
-            city: defaultAddr.city || "",
-            pincode: defaultAddr.pincode || "",
-            address: defaultAddr.address_line || "",
-          });
+          setFormFields(buildInitialCheckoutForm(user, defaultAddr));
         } else {
-          setFormFields({
-            firstName,
-            lastName,
-            email: session.user.email || "",
-            phone: "",
-            country: "",
-            city: "",
-            pincode: "",
-            address: "",
-          });
+          setFormFields(buildInitialCheckoutForm(user));
         }
       } catch {
-        setFormFields({
-          firstName,
-          lastName,
-          email: session.user.email || "",
-          phone: "",
-          country: "",
-          city: "",
-          pincode: "",
-          address: "",
-        });
+        setFormFields(buildInitialCheckoutForm(user));
       }
     };
 
@@ -185,7 +169,7 @@ export default function CheckoutPageClient() {
     });
   };
 
-  const validateValue = () => {
+  const validateCheckoutForm = () => {
     if (!formFields.firstName.trim()) {
       toast.error("Vui lòng nhập họ");
       return false;
@@ -238,7 +222,7 @@ export default function CheckoutPageClient() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!validateValue()) return;
+    if (!validateCheckoutForm()) return;
 
     if (!allItemsAllowCod && paymentMethod === "cod") {
       toast.error("COD chỉ áp dụng cho sản phẩm vật lý");
@@ -259,7 +243,7 @@ export default function CheckoutPageClient() {
         appliedCouponForOrder &&
         Number(appliedCouponForOrder.subtotal) !== Number(cartSummary.subtotal)
       ) {
-        localStorage.removeItem("appliedCoupon");
+        clearAppliedCoupon();
         appliedCouponForOrder = null;
       }
 
@@ -282,7 +266,7 @@ export default function CheckoutPageClient() {
       });
 
       if (order?.paymentUrl) {
-        localStorage.removeItem("appliedCoupon");
+        clearAppliedCoupon();
         await clearCart();
         window.location.href = order.paymentUrl;
         return;

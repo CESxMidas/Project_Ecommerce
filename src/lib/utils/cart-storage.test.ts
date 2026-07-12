@@ -2,12 +2,26 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   calcCartSummary,
+  clearAppliedCoupon,
   getPayableCartTotal,
   getUserCartKey,
+  isAppliedCouponValid,
+  loadAppliedCoupon,
   loadCart,
+  saveAppliedCoupon,
   saveCart,
 } from "@/lib/utils/cart-storage";
 import { mockCartItem } from "@/test/fixtures/commerce";
+import type { AppliedCoupon } from "@/types/cart";
+
+const sampleCoupon: AppliedCoupon = {
+  code: "QA10",
+  type: "percent",
+  value: 10,
+  discount: 39800,
+  subtotal: 398000,
+  total: 358200,
+};
 
 describe("cart-storage", () => {
   beforeEach(() => {
@@ -52,5 +66,32 @@ describe("cart-storage", () => {
   it("returns empty cart when storage is corrupted", () => {
     localStorage.setItem("cart:guest", "{invalid-json");
     expect(loadCart(null)).toEqual([]);
+  });
+
+  it("round-trips an applied coupon through storage", () => {
+    saveAppliedCoupon(sampleCoupon);
+    expect(loadAppliedCoupon()).toEqual(sampleCoupon);
+  });
+
+  it("returns null when no coupon is stored", () => {
+    expect(loadAppliedCoupon()).toBeNull();
+  });
+
+  it("returns null (no throw) when the stored coupon is corrupted", () => {
+    localStorage.setItem("appliedCoupon", "{invalid-json");
+    expect(loadAppliedCoupon()).toBeNull();
+  });
+
+  it("clears the applied coupon", () => {
+    saveAppliedCoupon(sampleCoupon);
+    clearAppliedCoupon();
+    expect(loadAppliedCoupon()).toBeNull();
+  });
+
+  it("validates a coupon only while its subtotal still matches", () => {
+    expect(isAppliedCouponValid(sampleCoupon, 398000)).toBe(true);
+    expect(isAppliedCouponValid(sampleCoupon, 200000)).toBe(false);
+    expect(isAppliedCouponValid(sampleCoupon, 0)).toBe(false);
+    expect(isAppliedCouponValid(null, 398000)).toBe(false);
   });
 });

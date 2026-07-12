@@ -237,6 +237,12 @@ function normalizePurchaseVariant(
   };
 }
 
+// When a digital product ships without explicit variants, we synthesise
+// day/month/year packages from the monthly (base) sale price: a day is ~1/30 of
+// a month, and a year is priced at 10 months (i.e. 2 months free vs paying 12×).
+const SYNTHETIC_DAILY_PRICE_DIVISOR = 30;
+const SYNTHETIC_YEARLY_PRICE_MULTIPLIER = 10;
+
 export function getPurchaseVariants(
   product: NormalizedProduct | null,
 ): PurchaseVariant[] {
@@ -267,22 +273,22 @@ export function getPurchaseVariants(
   return [
     {
       id: "daily",
-      name: "Key ngay",
-      price: Math.max(0, Math.round(baseSalePrice / 30)),
+      name: "Key ngày",
+      price: Math.max(0, Math.round(baseSalePrice / SYNTHETIC_DAILY_PRICE_DIVISOR)),
       listPrice: null,
       duration: "daily",
     },
     {
       id: "monthly",
-      name: "Key thang",
+      name: "Key tháng",
       price: baseSalePrice,
       listPrice: baseListPrice,
       duration: "monthly",
     },
     {
       id: "yearly",
-      name: "Key nam",
-      price: Math.round(baseSalePrice * 10),
+      name: "Key năm",
+      price: Math.round(baseSalePrice * SYNTHETIC_YEARLY_PRICE_MULTIPLIER),
       listPrice: null,
       duration: "yearly",
     },

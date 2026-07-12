@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import * as cartService from "@/lib/services/cart-service";
 import {
   calcCartSummary,
+  clearAppliedCoupon,
   clearStoredCart,
   consumeCheckoutCompleted,
   loadCart,
@@ -165,7 +166,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      localStorage.removeItem("appliedCoupon");
+      clearAppliedCoupon();
       clearStoredCart(sessionUser);
       setCartItems([]);
 
@@ -374,7 +375,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const completeCheckout = useCallback(async () => {
     markCheckoutCompleted();
-    localStorage.removeItem("appliedCoupon");
+    clearAppliedCoupon();
     clearStoredCart(sessionUser);
     await clearCart();
   }, [clearCart, sessionUser]);

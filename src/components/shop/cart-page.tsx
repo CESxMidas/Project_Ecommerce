@@ -12,6 +12,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { OrderSummaryTotals } from "@/components/shop/order-summary-totals";
 import { checkoutCtaClass, fieldClass } from "@/lib/ui/tokens";
 import { validateCoupon } from "@/lib/services/cms-service";
+import {
+  clearAppliedCoupon,
+  isAppliedCouponValid,
+  loadAppliedCoupon,
+  saveAppliedCoupon,
+} from "@/lib/utils/cart-storage";
 import { cn } from "@/lib/utils";
 import { getToastErrorMessage } from "@/lib/utils/toast-error";
 import { formatPrice } from "@/lib/utils/format";
@@ -43,25 +49,16 @@ export default function CartPageClient() {
   );
 
   const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(() => {
-    if (typeof window === "undefined") return null;
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(
+    loadAppliedCoupon,
+  );
 
-    try {
-      return JSON.parse(localStorage.getItem("appliedCoupon") || "null");
-    } catch {
-      return null;
-    }
-  });
-
-  const hasValidCoupon =
-    appliedCoupon &&
-    cartSummary.subtotal > 0 &&
-    Number(appliedCoupon.subtotal) === Number(cartSummary.subtotal);
+  const hasValidCoupon = isAppliedCouponValid(appliedCoupon, cartSummary.subtotal);
   const effectiveCoupon = hasValidCoupon ? appliedCoupon : null;
 
   useEffect(() => {
     if (appliedCoupon && !hasValidCoupon) {
-      localStorage.removeItem("appliedCoupon");
+      clearAppliedCoupon();
     }
   }, [appliedCoupon, hasValidCoupon]);
 
@@ -79,7 +76,7 @@ export default function CartPageClient() {
     try {
       const result = await validateCoupon(couponCode.trim(), cartSummary.subtotal);
 
-      localStorage.setItem("appliedCoupon", JSON.stringify(result));
+      saveAppliedCoupon(result);
       setAppliedCoupon(result);
       toast.success("Đã áp dụng mã giảm giá");
     } catch (error) {
